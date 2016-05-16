@@ -31,6 +31,7 @@ export # types
     AnnotationPoints,
     AnnotationLine,
     AnnotationLines,
+    AnnotationColoredLines,
     AnnotationBox,
     AnnotationText,
     AnnotationScalebarFixed,

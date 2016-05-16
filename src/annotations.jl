@@ -166,6 +166,37 @@ function AnnotationLine(c1::Real, c2::Real, c3::Real, c4::Real; coord_order="xyx
                    (@compat(Float64(x2)), @compat(Float64(y2))); args...)
 end
 
+## Lines with colors annotations
+
+@compat type AnnotationColoredLines{R<:Union{Real, Tuple{Real, Real}}, T}
+    lines::T
+    z::Float64
+    t::Float64
+    colors::Vector{Color}
+    linewidth::Float64
+    coordinate_order::Vector{Int}
+
+    function AnnotationColoredLines(lines::T, z, t, colors, linewidth, coord_order_str)
+        ord = sortperm(coord_order_str.data)
+        @assert coord_order_str[ord] == "xxyy"
+        new(lines, z, t, colors, linewidth, ord)
+    end
+end
+
+function AnnotationColoredLines{R<:Real}(lines::Vector{(@compat Tuple{(@compat Tuple{R, R}),
+                                                               (@compat Tuple{R, R})})},
+                                  colors; z = NaN, t = NaN, linewidth=1.0, 
+                                  coord_order="xyxy")
+    AnnotationColoredLines{R,Vector{(@compat Tuple{(@compat Tuple{R, R}),
+                                            (@compat Tuple{R, R})})}}(lines, z, t, colors,
+                                                                      linewidth, coord_order)
+end
+
+function AnnotationColoredLines{R<:Real}(lines::Matrix{R}, colors; z = NaN, t = NaN, 
+                                          linewidth=1.0, coord_order="xyxy")
+    AnnotationColoredLines{R, Matrix{R}}(lines, z, t, colors, linewidth, coord_order)
+end
+
 ## Box annotations
 
 type AnnotationBox
@@ -203,6 +234,7 @@ setvalid!(ann::AnchoredAnnotation, z, t) = (ann.valid = annotation_isvalid(ann.d
 function annotation_isvalid(dat::@compat(Union{AnnotationText,
                                                AnnotationPoints,
                                                AnnotationLines,
+                                               AnnotationColoredLines,
                                                AnnotationBox}), z, t)
     (isnan(dat.z) || round(dat.z) == z) && (isnan(dat.t) || round(dat.t) == t)
 end
@@ -366,6 +398,21 @@ function draw_line(ctx::CairoContext, line::(@compat Tuple{Real, Real, Real, Rea
     move_to(ctx, x1, y1)
     line_to(ctx, x2, y2)
     stroke(ctx)
+end
+
+## Lines with color array
+
+function draw_anchored(ctx::CairoContext, data::AnnotationColoredLines, args...)
+    set_line_width(ctx, data.linewidth)
+    draw_lines(ctx, data.lines, data.coordinate_order, data.colors)
+end
+
+function draw_lines{R<:Real}(ctx::CairoContext, lines::Matrix{R}, coordinate_order, colors)
+    for i in 1:size(lines, 2)
+        pt = tuple(lines[coordinate_order,i]...)
+        set_source(ctx, colors[i])
+        draw_line(ctx, pt)
+    end
 end
 
 ## Box
